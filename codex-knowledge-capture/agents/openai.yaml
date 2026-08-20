@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 项目知识沉淀"
+  short_description: "从 Codex 对话中提炼并沉淀当前项目的可复用知识"
+  default_prompt: "使用 $codex-knowledge-capture 从本次任务提炼可复用知识，以准确术语和精简结论写入当前项目；框架与流程优先使用 Mermaid，公式使用可渲染的 LaTeX。"
