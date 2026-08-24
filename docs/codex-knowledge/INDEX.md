@@ -1,10 +1,14 @@
 # Codex 项目知识
 
-> 本目录只沉淀当前项目中经过确认或验证、可供未来任务复用的信息。
+> 正式文档用于系统理解主题；沟通与迭代日志用于保留可追溯的结论变化。
 
-## 主题
+## 正式文档
 
-- [knowledge-management](topics/knowledge-management.md) — 3 条
+- [项目知识双轨沉淀机制](documents/project-knowledge-capture.md) — 说明项目如何用迭代日志保留结论演进，并默认持续维护同一份主文档形成系统知识。（稳定，2026-08-24）
+
+## 沟通与迭代日志
+
+- [knowledge-management](topics/knowledge-management.md) — 5 条
 
 ## 待确认
 

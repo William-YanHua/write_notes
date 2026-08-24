@@ -17,6 +17,8 @@ from typing import Any
 
 CONFIG_PATH = Path(".codex-knowledge.json")
 DEFAULT_KNOWLEDGE_DIR = Path("docs/codex-knowledge")
+LOGS_DIR = Path("topics")
+DOCUMENTS_DIR = Path("documents")
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 ALLOWED_TYPES = {
     "decision",
@@ -45,6 +47,16 @@ MERMAID_PREFIXES = (
 )
 ACCEPTED_EVIDENCE = {"user-confirmed", "verified", "observed"}
 ALL_EVIDENCE = ACCEPTED_EVIDENCE | {"inferred"}
+ALLOWED_DOCUMENT_TYPES = {
+    "architecture",
+    "technical-design",
+    "project-guide",
+    "troubleshooting",
+    "postmortem",
+    "decision-record",
+    "research-note",
+}
+ALLOWED_DOCUMENT_STATUS = {"draft", "stable"}
 PROJECT_MARKERS = (
     "AGENTS.md",
     "Cargo.toml",
@@ -187,13 +199,14 @@ def initialize(project_root: Path, relative_dir: str | None) -> Path:
         write_text(path, json.dumps(config, ensure_ascii=False, indent=2) + "\n")
 
     target = knowledge_path(project_root, config)
-    (target / "topics").mkdir(parents=True, exist_ok=True)
+    (target / LOGS_DIR).mkdir(parents=True, exist_ok=True)
+    (target / DOCUMENTS_DIR).mkdir(parents=True, exist_ok=True)
     pending = target / "pending-review.md"
     if not pending.exists():
         write_text(
             pending,
             "# 待确认的项目知识\n\n"
-            "> 存放冲突、适用范围不清或证据不足的候选信息。确认后再写入正式主题文档。\n",
+            "> 存放冲突、适用范围不清或证据不足的候选信息。确认后可写入日志，并按需同步到正式文档。\n",
         )
     rebuild_index(target)
     return target
@@ -205,22 +218,53 @@ def count_markers(path: Path, prefix: str) -> int:
     return path.read_text(encoding="utf-8").count(f"<!-- {prefix}")
 
 
+def extract_document_metadata(content: str) -> dict[str, Any] | None:
+    match = re.search(r"<!-- codex-document-meta:(\{.*\}) -->", content)
+    if not match:
+        return None
+    try:
+        metadata = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return None
+    required = {"title", "summary", "status", "updated_at"}
+    if not isinstance(metadata, dict) or not required.issubset(metadata):
+        return None
+    return metadata
+
+
 def rebuild_index(target: Path) -> None:
+    document_lines: list[str] = []
+    for document_file in sorted((target / DOCUMENTS_DIR).glob("*.md")):
+        metadata = extract_document_metadata(
+            document_file.read_text(encoding="utf-8")
+        )
+        if not metadata:
+            continue
+        status = "稳定" if metadata["status"] == "stable" else "草稿"
+        document_lines.append(
+            f"- [{metadata['title']}](documents/{document_file.name})"
+            f" — {metadata['summary']}（{status}，{metadata['updated_at']}）"
+        )
+    if not document_lines:
+        document_lines.append("- 暂无正式文档")
+
     topic_lines: list[str] = []
-    for topic_file in sorted((target / "topics").glob("*.md")):
+    for topic_file in sorted((target / LOGS_DIR).glob("*.md")):
         count = count_markers(topic_file, "codex-knowledge:")
         if count:
             topic_lines.append(
                 f"- [{topic_file.stem}](topics/{topic_file.name}) — {count} 条"
             )
     if not topic_lines:
-        topic_lines.append("- 暂无正式知识")
+        topic_lines.append("- 暂无沟通与迭代日志")
 
     pending_count = count_markers(target / "pending-review.md", "codex-pending:")
     content = (
         "# Codex 项目知识\n\n"
-        "> 本目录只沉淀当前项目中经过确认或验证、可供未来任务复用的信息。\n\n"
-        "## 主题\n\n"
+        "> 正式文档用于系统理解主题；沟通与迭代日志用于保留可追溯的结论变化。\n\n"
+        "## 正式文档\n\n"
+        + "\n".join(document_lines)
+        + "\n\n## 沟通与迭代日志\n\n"
         + "\n".join(topic_lines)
         + "\n\n## 待确认\n\n"
         f"- [冲突和低置信信息](pending-review.md) — {pending_count} 条\n"
@@ -441,6 +485,113 @@ def validate_entry(entry: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def validate_document_body(value: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise KnowledgeError("body must be a non-empty Markdown string")
+    body = value.strip()
+    if len(body) < 400:
+        raise KnowledgeError("body must contain at least 400 characters of developed prose")
+    if len(body) > 60000:
+        raise KnowledgeError("body must contain at most 60000 characters")
+    if "\x00" in body or "<!-- codex-document" in body:
+        raise KnowledgeError("body contains a reserved marker or null byte")
+
+    prose = re.sub(r"```.*?```", "", body, flags=re.DOTALL)
+    if re.search(r"^#\s+", prose, re.MULTILINE):
+        raise KnowledgeError("body must not contain an H1; title is rendered separately")
+    if len(re.findall(r"^##\s+\S", prose, re.MULTILINE)) < 3:
+        raise KnowledgeError("body must contain at least three H2 sections")
+    if not body.startswith("## "):
+        raise KnowledgeError("body must start with an H2 section")
+    if re.search(r"^##\s+参考依据\s*$", prose, re.MULTILINE):
+        raise KnowledgeError("body must not define 参考依据; sources are rendered separately")
+    validate_math_markdown(prose, "body")
+    return body
+
+
+def validate_document(entry: dict[str, Any]) -> dict[str, Any]:
+    if entry.get("semantic_rewrite") is not True:
+        raise KnowledgeError(
+            "semantic_rewrite must be true after the document is synthesized as a whole"
+        )
+    action = require_text(entry, "action")
+    if action not in {"add", "update"}:
+        raise KnowledgeError("document action must be add or update")
+
+    document_id = require_text(entry, "id")
+    if not SLUG_RE.fullmatch(document_id) or len(document_id) > 80:
+        raise KnowledgeError("document id must be kebab-case and at most 80 characters")
+
+    document_type = require_text(entry, "type")
+    if document_type not in ALLOWED_DOCUMENT_TYPES:
+        raise KnowledgeError(f"unsupported document type: {document_type}")
+    status = require_text(entry, "status")
+    if status not in ALLOWED_DOCUMENT_STATUS:
+        raise KnowledgeError("document status must be draft or stable")
+
+    split_from = optional_text(entry, "split_from", max_length=80)
+    split_reason = optional_text(entry, "split_reason", max_length=320)
+    if bool(split_from) != bool(split_reason):
+        raise KnowledgeError("split_from and split_reason must be provided together")
+    if split_from and not SLUG_RE.fullmatch(split_from):
+        raise KnowledgeError("split_from must be a kebab-case document ID")
+    if split_from == document_id:
+        raise KnowledgeError("a document cannot be split from itself")
+
+    normalized = {
+        "action": action,
+        "semantic_rewrite": True,
+        "id": document_id,
+        "title": require_text(entry, "title", max_length=80),
+        "type": document_type,
+        "status": status,
+        "summary": require_text(entry, "summary", max_length=240),
+        "audience": require_string_list(
+            entry, "audience", max_items=6, max_item_length=80
+        ),
+        "scope": require_text(entry, "scope", max_length=240),
+        "split_from": split_from,
+        "split_reason": split_reason,
+        "source_log_ids": require_string_list(
+            entry,
+            "source_log_ids",
+            optional=True,
+            max_items=50,
+            max_item_length=80,
+        ),
+        "sources": require_string_list(
+            entry, "sources", max_items=20, max_item_length=240
+        ),
+        "body": validate_document_body(entry.get("body")),
+        "updated_at": entry.get("updated_at") or date.today().isoformat(),
+    }
+    if any(not SLUG_RE.fullmatch(item) for item in normalized["source_log_ids"]):
+        raise KnowledgeError("source_log_ids must contain only kebab-case IDs")
+    if not isinstance(normalized["updated_at"], str) or not re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}", normalized["updated_at"]
+    ):
+        raise KnowledgeError("updated_at must use YYYY-MM-DD")
+    placeholder_patterns = (
+        r"\b(?:TODO|TBD|FIXME)\b",
+        r"(?:\[|【|<|（|\()\s*(?:待补充|待撰写|占位)\s*(?:\]|】|>|）|\))",
+        r"^#{2,6}\s+(?:待补充|待撰写|占位)\s*$",
+    )
+    if status == "stable" and any(
+        re.search(pattern, normalized["body"], re.IGNORECASE | re.MULTILINE)
+        for pattern in placeholder_patterns
+    ):
+        raise KnowledgeError("stable documents must not contain unresolved placeholders")
+    for key in ("title", "summary", "scope"):
+        validate_math_markdown(normalized[key], key)
+    for key in ("split_reason",):
+        if normalized[key]:
+            validate_math_markdown(normalized[key], key)
+    for key in ("audience", "sources"):
+        for index, value in enumerate(normalized[key]):
+            validate_math_markdown(value, f"{key}[{index}]")
+    return normalized
+
+
 def render_list(items: list[str]) -> str:
     return "\n".join(f"- {item}" for item in items)
 
@@ -478,6 +629,35 @@ def render_entry(entry: dict[str, Any], first_recorded: str | None = None) -> st
     )
 
 
+def render_document(entry: dict[str, Any], created_at: str | None = None) -> str:
+    metadata = {
+        "id": entry["id"],
+        "title": entry["title"],
+        "type": entry["type"],
+        "status": entry["status"],
+        "summary": entry["summary"],
+        "audience": entry["audience"],
+        "scope": entry["scope"],
+        "source_log_ids": entry["source_log_ids"],
+        "created_at": created_at or entry["updated_at"],
+        "updated_at": entry["updated_at"],
+    }
+    if entry["split_from"]:
+        metadata["split_from"] = entry["split_from"]
+        metadata["split_reason"] = entry["split_reason"]
+    metadata_json = json.dumps(metadata, ensure_ascii=False, separators=(",", ":"))
+    return (
+        f"<!-- codex-document:{entry['id']} -->\n"
+        f"<!-- codex-document-meta:{metadata_json} -->\n"
+        f"# {entry['title']}\n\n"
+        f"> {entry['summary']}\n\n"
+        f"{entry['body'].rstrip()}\n\n"
+        f"## 参考依据\n\n"
+        f"{render_list(entry['sources'])}\n"
+        f"<!-- /codex-document:{entry['id']} -->\n"
+    )
+
+
 def extract_sources(block: str) -> list[str]:
     match = re.search(
         r"\n\*\*来源\*\*\n\n(?P<sources>.*?)(?:\n<!-- /codex-knowledge:)",
@@ -504,7 +684,7 @@ def block_pattern(knowledge_id: str) -> re.Pattern[str]:
 
 def find_existing(target: Path, knowledge_id: str) -> tuple[Path, re.Match[str]] | None:
     pattern = block_pattern(knowledge_id)
-    for topic_file in sorted((target / "topics").glob("*.md")):
+    for topic_file in sorted((target / LOGS_DIR).glob("*.md")):
         match = pattern.search(topic_file.read_text(encoding="utf-8"))
         if match:
             return topic_file, match
@@ -512,12 +692,12 @@ def find_existing(target: Path, knowledge_id: str) -> tuple[Path, re.Match[str]]
 
 
 def topic_header(topic: str) -> str:
-    return f"# {topic} 项目知识\n\n"
+    return f"# {topic} 沟通与迭代日志\n\n"
 
 
 def add_or_update(target: Path, entry: dict[str, Any]) -> str:
     existing = find_existing(target, entry["id"])
-    target_file = target / "topics" / f"{entry['topic']}.md"
+    target_file = target / LOGS_DIR / f"{entry['topic']}.md"
 
     if entry["action"] == "add" and existing:
         raise KnowledgeError(f"knowledge ID already exists: {entry['id']}")
@@ -552,6 +732,82 @@ def add_or_update(target: Path, entry: dict[str, Any]) -> str:
 
     rebuild_index(target)
     return result
+
+
+def add_or_update_document(target: Path, entry: dict[str, Any]) -> str:
+    for source_log_id in entry["source_log_ids"]:
+        if not find_existing(target, source_log_id):
+            raise KnowledgeError(f"source log ID does not exist: {source_log_id}")
+
+    target_file = target / DOCUMENTS_DIR / f"{entry['id']}.md"
+    exists = target_file.is_file()
+    if entry["action"] == "add" and exists:
+        raise KnowledgeError(f"document already exists: {entry['id']}")
+    if entry["action"] == "update" and not exists:
+        raise KnowledgeError(f"cannot update missing document: {entry['id']}")
+
+    document_files = sorted((target / DOCUMENTS_DIR).glob("*.md"))
+    if entry["action"] == "add" and not document_files and entry["split_from"]:
+        raise KnowledgeError("the first project document cannot be a split document")
+    if entry["action"] == "add" and document_files:
+        if not entry["split_from"]:
+            existing_ids = []
+            for document_file in document_files:
+                metadata = extract_document_metadata(
+                    document_file.read_text(encoding="utf-8")
+                )
+                existing_ids.append(
+                    metadata.get("id", document_file.stem) if metadata else document_file.stem
+                )
+            raise KnowledgeError(
+                "this project already has a document; update one of "
+                f"{', '.join(existing_ids)} or provide split_from and split_reason "
+                "when an independent maintenance boundary requires a split"
+            )
+
+        split_source_file = target / DOCUMENTS_DIR / f"{entry['split_from']}.md"
+        if not split_source_file.is_file():
+            raise KnowledgeError(
+                f"split source document does not exist: {entry['split_from']}"
+            )
+        split_source_metadata = extract_document_metadata(
+            split_source_file.read_text(encoding="utf-8")
+        )
+        if (
+            not split_source_metadata
+            or split_source_metadata.get("id") != entry["split_from"]
+        ):
+            raise KnowledgeError(
+                f"cannot split from unmanaged document: {split_source_file}"
+            )
+        if split_source_metadata.get("split_from"):
+            raise KnowledgeError("a split document must be split directly from the primary document")
+
+    created_at = None
+    if exists:
+        old_content = target_file.read_text(encoding="utf-8")
+        old_metadata = extract_document_metadata(old_content)
+        if not old_metadata or old_metadata.get("id") != entry["id"]:
+            raise KnowledgeError(f"cannot safely update unmanaged document: {target_file}")
+        old_split_from = old_metadata.get("split_from")
+        old_split_reason = old_metadata.get("split_reason")
+        if old_split_from:
+            if entry["split_from"] and entry["split_from"] != old_split_from:
+                raise KnowledgeError("split_from cannot change after document creation")
+            entry["split_from"] = old_split_from
+            entry["split_reason"] = entry["split_reason"] or old_split_reason
+        elif entry["split_from"]:
+            raise KnowledgeError("an existing primary document cannot become a split document")
+        created_at = old_metadata.get("created_at") or old_metadata.get("updated_at")
+        if created_at and entry["updated_at"] < created_at:
+            raise KnowledgeError("updated_at cannot be earlier than created_at")
+        previous_updated_at = old_metadata.get("updated_at")
+        if previous_updated_at and entry["updated_at"] < previous_updated_at:
+            raise KnowledgeError("updated_at cannot be earlier than the previous update")
+
+    write_text(target_file, render_document(entry, created_at))
+    rebuild_index(target)
+    return "updated" if exists else "added"
 
 
 def write_conflict(target: Path, entry: dict[str, Any]) -> str:
@@ -610,6 +866,16 @@ def load_entry(path: Path) -> dict[str, Any]:
     return validate_entry(value)
 
 
+def load_document(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise KnowledgeError(f"cannot read document JSON: {exc}") from exc
+    if not isinstance(value, dict):
+        raise KnowledgeError("document JSON must contain one object")
+    return validate_document(value)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -621,9 +887,19 @@ def build_parser() -> argparse.ArgumentParser:
     resolve_parser = subparsers.add_parser("resolve", help="print configured knowledge path")
     resolve_parser.add_argument("--project-root")
 
-    write_parser = subparsers.add_parser("write", help="write one structured entry")
-    write_parser.add_argument("--project-root")
-    write_parser.add_argument("--input", required=True, type=Path)
+    for command, help_text in (
+        ("write", "write one structured log entry (backward-compatible)"),
+        ("write-log", "write one structured communication and iteration log entry"),
+    ):
+        write_parser = subparsers.add_parser(command, help=help_text)
+        write_parser.add_argument("--project-root")
+        write_parser.add_argument("--input", required=True, type=Path)
+
+    document_parser = subparsers.add_parser(
+        "write-document", help="write one synthesized project document"
+    )
+    document_parser.add_argument("--project-root")
+    document_parser.add_argument("--input", required=True, type=Path)
     return parser
 
 
@@ -638,12 +914,23 @@ def main() -> int:
             config = load_config(project_root)
             target = knowledge_path(project_root, config)
             result = {"project_root": str(project_root), "knowledge_dir": str(target)}
-        else:
+        elif args.command in {"write", "write-log"}:
             config = load_config(project_root)
             target = knowledge_path(project_root, config)
             entry = load_entry(args.input)
             status = write_conflict(target, entry) if entry["action"] == "conflict" else add_or_update(target, entry)
             result = {"status": status, "id": entry["id"], "knowledge_dir": str(target)}
+        else:
+            config = load_config(project_root)
+            target = knowledge_path(project_root, config)
+            document = load_document(args.input)
+            status = add_or_update_document(target, document)
+            result = {
+                "status": status,
+                "id": document["id"],
+                "document": str(target / DOCUMENTS_DIR / f"{document['id']}.md"),
+                "knowledge_dir": str(target),
+            }
         print(json.dumps(result, ensure_ascii=False))
         return 0
     except (KnowledgeError, OSError) as exc:

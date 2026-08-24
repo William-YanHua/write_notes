@@ -1,4 +1,4 @@
-# knowledge-management 项目知识
+# knowledge-management 沟通与迭代日志
 
 <!-- codex-knowledge:keep-knowledge-project-local -->
 ## 项目知识采用仓库级隔离
@@ -97,3 +97,69 @@
 
 - 用户确认，2026-08-20
 <!-- /codex-knowledge:render-math-with-latex-delimiters -->
+
+<!-- codex-knowledge:separate-logs-and-documents -->
+## 项目知识采用日志与文档双轨沉淀
+
+**结论**
+
+保留结构化卡片作为沟通与迭代日志；另建正式文档链路，将已确认事实组织成可独立阅读的完整文章。
+
+**关键点**
+
+- 日志与文档在索引中分区展示。
+- 正式文档可以引用日志，但不得机械拼接卡片。
+- 更新正式文档时需重审全文结构和上下游影响。
+
+**依据**
+
+日志需要保留结论演进和证据，正式文档需要围绕主题形成连续主线；让同一种结构兼任两种目标会造成正文流水账化。
+
+**适用范围**
+
+codex-knowledge-capture 管理的项目知识产物
+
+**记录信息**
+
+- 类型：`decision`
+- 证据：`user-confirmed`
+- 首次记录：2026-08-24
+- 最近更新：2026-08-24
+
+**来源**
+
+- 用户确认，2026-08-24
+<!-- /codex-knowledge:separate-logs-and-documents -->
+
+<!-- codex-knowledge:maintain-one-project-document -->
+## 项目默认持续维护同一份主文档
+
+**结论**
+
+每个项目默认持续维护同一份主文档；新功能、新任务、新阶段或新主题优先更新原文档，只有形成明确且长期独立的维护边界时才拆分。
+
+**关键点**
+
+- 写作前先扫描 INDEX.md 和 documents/，已有主文档时默认使用 update。
+- 拆分前先尝试删重、重组章节、增加目录和压缩低价值细节。
+- 确需拆分时记录来源主文档与具体理由，并在主文档保留概览和入口。
+
+**依据**
+
+频繁创建新文档会让项目知识分散、重复并增加检索和一致性维护成本；稳定入口更利于持续演进和整体理解。
+
+**适用范围**
+
+codex-knowledge-capture 管理的项目正式文档
+
+**记录信息**
+
+- 类型：`decision`
+- 证据：`user-confirmed`
+- 首次记录：2026-08-24
+- 最近更新：2026-08-24
+
+**来源**
+
+- 用户确认，2026-08-24
+<!-- /codex-knowledge:maintain-one-project-document -->

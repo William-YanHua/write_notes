@@ -1,13 +1,11 @@
 # Codex Knowledge Capture
 
-`codex-knowledge-capture` 是一个 Codex 技能，用于从项目交互中提炼经过确认或验证的可复用知识，并将结果写入当前项目自己的知识目录。
+`codex-knowledge-capture` 是一个项目级知识沉淀 Skill，同时维护两类互补产物：
 
-核心约束：
+- **沟通与迭代日志**：用结构化卡片保留已确认结论、证据和变化历史。
+- **正式文档**：默认持续维护同一份项目主文档，整体组织背景、目标、方案、取舍、边界与验证；只有形成独立的长期维护边界时才拆分。
 
-- 每个项目独立保存知识，通过 `.codex-knowledge.json` 记录项目内相对路径。
-- 写入前进行语义重写和信息压缩，不机械复述或直译对话。
-- 框架、架构和流程优先使用 Mermaid，数学公式使用 LaTeX 定界符。
-- 冲突或证据不足的内容进入待确认区，不覆盖正式结论。
+两类产物都写入当前项目，通过 `.codex-knowledge.json` 记录项目内相对路径。日志可以成为文档的事实依据，但不会被机械拼接成正文；文档更新也不会覆盖历史日志。
 
 ## 安装
 
@@ -17,7 +15,7 @@
 cp -R codex-knowledge-capture ~/.codex/skills/
 ```
 
-重新打开 Codex 任务后，即可显式调用 `$codex-knowledge-capture`；符合技能描述的项目知识沉淀任务也可以自动触发。
+重新打开 Codex 任务后，可显式调用 `$codex-knowledge-capture`；记录项目结论、总结经验或撰写项目文档时也可以自动触发。
 
 ## 目录
 
@@ -27,6 +25,12 @@ codex-knowledge-capture/
 ├── agents/openai.yaml
 ├── references/
 └── scripts/knowledge_store.py
+
+docs/codex-knowledge/
+├── INDEX.md
+├── topics/       # 沟通与迭代日志，保留旧目录名以兼容现有项目
+├── documents/    # 默认一份项目主文档，必要时包含拆分文档
+└── pending-review.md
 ```
 
-详细工作流、准入规则和条目格式见技能目录中的 `SKILL.md` 与 `references/`。
+详细选择规则、写作流程和输入格式见技能目录中的 `SKILL.md` 与 `references/`。

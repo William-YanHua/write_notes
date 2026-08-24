@@ -1,6 +1,6 @@
-# 条目输入格式
+# 日志卡片输入格式
 
-`knowledge_store.py write` 接收一个 UTF-8 JSON 对象。
+`knowledge_store.py write-log` 接收一个 UTF-8 JSON 对象。`write` 是兼容旧调用的别名。
 
 ## 正式条目
 
