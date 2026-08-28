@@ -61,15 +61,26 @@
 
 `type` 允许：
 
+- `proposal`
+- `analysis`
+- `requirements`
 - `architecture`
 - `technical-design`
 - `project-guide`
+- `operation-manual`
+- `api-reference`
 - `troubleshooting`
 - `postmortem`
 - `decision-record`
+- `test-report`
+- `comparative-research`
 - `research-note`
+- `paper-reading`
+- `progress-report`
+- `meeting-notes`
+- `summary`
 
-各类型应覆盖的内容见 [document-writing.md](document-writing.md)。
+各类型如何筛选、压缩和重排交互内容，见 [document-type-styles.md](document-type-styles.md)。其中列出的成文主线不是固定目录，不得直接复制成章节标题。
 
 `type` 和 `writing_style` 互相独立：前者说明文档要完成什么任务，后者说明内容如何讲给目标读者。例如，同一份 `technical-design` 可以采用面向开发者的 `technical` 风格，也可以采用面向跨职能评审者的 `explanatory` 风格。
 
@@ -82,6 +93,7 @@
 - 可包含自然段、列表、表格、Mermaid 和 LaTeX。
 - 正文中不得包含 `codex-document` 保留标记。
 - 正文应直接陈述主题知识，不保留用户建议、评审 comment、修改过程或写作提醒。
+- 必须引入用户未提及的术语时，应在首次出现处说明它在当前场景中的具体含义；缩写首次出现时应写出全称。
 - 二级标题应按实际主题命名，不照抄类型检查清单中的通用词汇。
 - `stable` 状态不得包含 `TODO`、“待补充”“待撰写”或占位内容。
 

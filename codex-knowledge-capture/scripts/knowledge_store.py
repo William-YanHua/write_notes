@@ -48,13 +48,24 @@ MERMAID_PREFIXES = (
 ACCEPTED_EVIDENCE = {"user-confirmed", "verified", "observed"}
 ALL_EVIDENCE = ACCEPTED_EVIDENCE | {"inferred"}
 ALLOWED_DOCUMENT_TYPES = {
+    "proposal",
+    "analysis",
+    "requirements",
     "architecture",
     "technical-design",
     "project-guide",
+    "operation-manual",
+    "api-reference",
     "troubleshooting",
     "postmortem",
     "decision-record",
+    "test-report",
+    "comparative-research",
     "research-note",
+    "paper-reading",
+    "progress-report",
+    "meeting-notes",
+    "summary",
 }
 ALLOWED_DOCUMENT_STATUS = {"draft", "stable"}
 ALLOWED_WRITING_STYLES = {
@@ -66,13 +77,24 @@ ALLOWED_WRITING_STYLES = {
     "custom",
 }
 DEFAULT_DOCUMENT_STYLES = {
+    "proposal": "technical",
+    "analysis": "business",
+    "requirements": "business",
     "architecture": "technical",
     "technical-design": "technical",
     "project-guide": "explanatory",
+    "operation-manual": "operational",
+    "api-reference": "technical",
     "troubleshooting": "operational",
     "postmortem": "operational",
     "decision-record": "technical",
+    "test-report": "technical",
+    "comparative-research": "research",
     "research-note": "research",
+    "paper-reading": "research",
+    "progress-report": "business",
+    "meeting-notes": "business",
+    "summary": "business",
 }
 PROJECT_MARKERS = (
     "AGENTS.md",
