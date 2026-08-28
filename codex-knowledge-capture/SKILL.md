@@ -70,7 +70,7 @@ flowchart LR
 ## 文档链路
 
 1. 先扫描 `documents/` 和 `INDEX.md`。已有项目主文档时必须先选择 `update`，不得仅因本次内容属于新主题而使用新 ID。
-2. 明确本次更新要解决的问题、目标读者、范围和非目标；用户指定了技术类、科普类、研究类等写作风格时直接采用，未指定时根据文档用途和读者选择。风格会约束术语密度、解释深度和示例方式，但不能替代正文主题。
+2. 明确本次更新要解决的问题、目标读者、范围和非目标；根据交互内容的主要目的确定文档类型，并读取 [references/document-type-styles.md](references/document-type-styles.md) 中对应的整理风格。用户指定了技术类、科普类、研究类等表达风格时直接采用，未指定时根据读者选择。文档类型决定如何筛选、压缩和重排交互内容，表达风格只约束术语密度、解释深度和示例方式。
 3. 读取主文档全文及相关日志、代码、配置、正式资料和验证结果，建立事实清单并排除冲突和推断。
 4. 按 [references/document-writing.md](references/document-writing.md) 规划大纲，从整篇文章的角度重组受影响章节，不在末尾机械追加，也不逐卡片翻译。章节名直接描述所讲内容，不把“建议”“comment”“影响与验收”等讨论或检查用语机械写入正文。
 5. 项目没有正式文档时创建一份主文档。项目已有正式文档时，只有通过拆分检查才能 `add`；拆分后仍需同步更新主文档的概览、边界和导航。
@@ -109,4 +109,5 @@ flowchart LR
 - [references/writing-guidelines.md](references/writing-guidelines.md)：日志卡片的语义重写、压缩、图示与公式规则。
 - [references/entry-schema.md](references/entry-schema.md)：日志卡片 JSON 字段和示例。
 - [references/document-writing.md](references/document-writing.md)：正式文档的类型、大纲、成文方法和完整性检查。
+- [references/document-type-styles.md](references/document-type-styles.md)：不同类型文档如何从交互内容整理成文，包括主线、详略、术语、语言和删减规则。
 - [references/document-schema.md](references/document-schema.md)：正式文档 JSON 字段和示例。

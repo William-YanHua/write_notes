@@ -139,6 +139,32 @@ class DocumentReuseTest(unittest.TestCase):
         self.assertEqual(value["writing_style"], "explanatory")
         self.assertIsNone(value["style_notes"])
 
+    def test_interaction_document_types_have_expected_default_styles(self) -> None:
+        self.assertEqual(
+            knowledge_store.ALLOWED_DOCUMENT_TYPES,
+            set(knowledge_store.DEFAULT_DOCUMENT_STYLES),
+        )
+        expected = {
+            "proposal": "technical",
+            "analysis": "business",
+            "requirements": "business",
+            "operation-manual": "operational",
+            "api-reference": "technical",
+            "test-report": "technical",
+            "comparative-research": "research",
+            "paper-reading": "research",
+            "progress-report": "business",
+            "meeting-notes": "business",
+            "summary": "business",
+        }
+
+        for document_type, writing_style in expected.items():
+            with self.subTest(document_type=document_type):
+                value = knowledge_store.validate_document(
+                    self.document("project-guide", type=document_type)
+                )
+                self.assertEqual(value["writing_style"], writing_style)
+
     def test_explicit_document_style_is_saved_in_metadata(self) -> None:
         self.write_document(
             self.document(
