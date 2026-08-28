@@ -12,6 +12,8 @@
   "title": "项目知识沉淀机制",
   "type": "architecture",
   "status": "stable",
+  "writing_style": "technical",
+  "style_notes": "面向项目开发者，重点解释双轨机制和写入规则。",
   "summary": "说明项目如何分别维护可追溯的迭代日志与可独立阅读的正式文档。",
   "audience": [
     "项目开发者",
@@ -43,6 +45,8 @@
 - `title`：面向读者的正式标题，不超过 80 个字符。
 - `type`：决定内容检查重点，允许值见下文。
 - `status`：`draft` 或 `stable`。
+- `writing_style`：写作风格，可选；支持 `technical`、`explanatory`、`research`、`business`、`operational` 和 `custom`。省略时按 `type` 推断。
+- `style_notes`：用户对本次写作口吻、详略、术语或示例的补充要求，可选；`writing_style` 为 `custom` 时必填。
 - `summary`：一句话说明文章解决的问题或价值，不超过 240 个字符。
 - `audience`：目标读者，1–6 项。
 - `scope`：文章覆盖范围，不超过 240 个字符。
@@ -67,6 +71,8 @@
 
 各类型应覆盖的内容见 [document-writing.md](document-writing.md)。
 
+`type` 和 `writing_style` 互相独立：前者说明文档要完成什么任务，后者说明内容如何讲给目标读者。例如，同一份 `technical-design` 可以采用面向开发者的 `technical` 风格，也可以采用面向跨职能评审者的 `explanatory` 风格。
+
 ## 正文约束
 
 - 至少 400 个字符，并以二级标题开始。
@@ -75,6 +81,8 @@
 - 不创建“参考依据”章节；脚本根据 `sources` 统一生成。
 - 可包含自然段、列表、表格、Mermaid 和 LaTeX。
 - 正文中不得包含 `codex-document` 保留标记。
+- 正文应直接陈述主题知识，不保留用户建议、评审 comment、修改过程或写作提醒。
+- 二级标题应按实际主题命名，不照抄类型检查清单中的通用词汇。
 - `stable` 状态不得包含 `TODO`、“待补充”“待撰写”或占位内容。
 
 这些限制只拦截明显不完整的产物。章节是否充分、主线是否连贯、取舍和边界是否讲清，仍须按写作规范人工判断。

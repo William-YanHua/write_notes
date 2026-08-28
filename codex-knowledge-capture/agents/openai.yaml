@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex 项目知识双轨沉淀"
-  short_description: "同时维护项目沟通迭代日志与可独立阅读的完整知识文档"
-  default_prompt: "使用 $codex-knowledge-capture 记录本次任务的可复用结论，并优先更新现有项目主文档；只有形成独立维护边界时才拆分文档。"
+  short_description: "维护可追溯日志与按读者风格撰写的项目文档"
+  default_prompt: "使用 $codex-knowledge-capture 记录本次任务的可复用结论，并按用户指定或目标读者需要的风格更新项目主文档；正文不保留协作过程，只有形成独立维护边界时才拆分文档。"

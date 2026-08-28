@@ -4,11 +4,11 @@
 
 ## 正式文档
 
-- [项目知识双轨沉淀机制](documents/project-knowledge-capture.md) — 说明项目如何用迭代日志保留结论演进，并默认持续维护同一份主文档形成系统知识。（稳定，2026-08-24）
+- [项目知识双轨沉淀机制](documents/project-knowledge-capture.md) — 说明项目如何用迭代日志保留结论演进，并以面向读者的写作方式持续维护项目主文档。（稳定，2026-08-28）
 
 ## 沟通与迭代日志
 
-- [knowledge-management](topics/knowledge-management.md) — 5 条
+- [knowledge-management](topics/knowledge-management.md) — 6 条
 
 ## 待确认
 

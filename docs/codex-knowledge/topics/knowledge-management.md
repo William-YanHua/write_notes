@@ -163,3 +163,36 @@ codex-knowledge-capture 管理的项目正式文档
 
 - 用户确认，2026-08-24
 <!-- /codex-knowledge:maintain-one-project-document -->
+
+<!-- codex-knowledge:write-reader-oriented-formal-documents -->
+## 正式文档按读者与内容类别组织
+
+**结论**
+
+正式文档只呈现读者需要理解的主题知识，不展示协作过程；写作时采用本次指定的风格，未指定时根据文档用途和目标读者选择合适风格。
+
+**关键点**
+
+- 支持技术类、科普类、研究类、业务类、操作类和自定义风格。
+- 章节按实际对象和方法命名，例如数据清洗应展开字段标准化、缺失值处理和异常值识别。
+- 审阅标记、修改过程和写作提醒需要先转化为事实、方法或约束，无法转化时不进入正文。
+
+**依据**
+
+正式文档的目标是帮助读者清楚理解内容。协作痕迹和机械套用的检查词汇会打断阅读，也无法准确表达具体方法。
+
+**适用范围**
+
+codex-knowledge-capture 生成和更新的正式文档
+
+**记录信息**
+
+- 类型：`project-preference`
+- 证据：`user-confirmed`
+- 首次记录：2026-08-28
+- 最近更新：2026-08-28
+
+**来源**
+
+- 用户确认，2026-08-28
+<!-- /codex-knowledge:write-reader-oriented-formal-documents -->

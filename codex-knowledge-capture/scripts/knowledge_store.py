@@ -57,6 +57,23 @@ ALLOWED_DOCUMENT_TYPES = {
     "research-note",
 }
 ALLOWED_DOCUMENT_STATUS = {"draft", "stable"}
+ALLOWED_WRITING_STYLES = {
+    "technical",
+    "explanatory",
+    "research",
+    "business",
+    "operational",
+    "custom",
+}
+DEFAULT_DOCUMENT_STYLES = {
+    "architecture": "technical",
+    "technical-design": "technical",
+    "project-guide": "explanatory",
+    "troubleshooting": "operational",
+    "postmortem": "operational",
+    "decision-record": "technical",
+    "research-note": "research",
+}
 PROJECT_MARKERS = (
     "AGENTS.md",
     "Cargo.toml",
@@ -505,6 +522,26 @@ def validate_document_body(value: Any) -> str:
         raise KnowledgeError("body must start with an H2 section")
     if re.search(r"^##\s+参考依据\s*$", prose, re.MULTILINE):
         raise KnowledgeError("body must not define 参考依据; sources are rendered separately")
+    generic_headings = (
+        r"^#{2,6}\s+(?:有建议|建议|comments?|评审意见)\s*$",
+        r"^#{2,6}\s+(?:影响与验收|影响和验收)\s*$",
+    )
+    if any(
+        re.search(pattern, prose, re.IGNORECASE | re.MULTILINE)
+        for pattern in generic_headings
+    ):
+        raise KnowledgeError(
+            "document headings must name the actual subject instead of review or checklist labels"
+        )
+    process_traces = (
+        r"(?:用户|评审人?|reviewer).{0,8}(?:建议|意见|comments?|反馈).{0,12}(?:修改|调整|补充|撰写|写入)",
+        r"(?:根据|按照).{0,8}(?:建议|comments?|反馈).{0,12}(?:修改|调整|补充)",
+        r"(?:这里|本文|本节).{0,6}(?:需要|应该|建议)(?:说明|补充|展开|添加)",
+    )
+    if any(re.search(pattern, prose, re.IGNORECASE) for pattern in process_traces):
+        raise KnowledgeError(
+            "document body must absorb review feedback instead of exposing collaboration traces"
+        )
     validate_math_markdown(prose, "body")
     return body
 
@@ -529,6 +566,17 @@ def validate_document(entry: dict[str, Any]) -> dict[str, Any]:
     if status not in ALLOWED_DOCUMENT_STATUS:
         raise KnowledgeError("document status must be draft or stable")
 
+    writing_style_value = entry.get("writing_style")
+    if writing_style_value is None:
+        writing_style = DEFAULT_DOCUMENT_STYLES[document_type]
+    else:
+        writing_style = require_text(entry, "writing_style", max_length=40)
+        if writing_style not in ALLOWED_WRITING_STYLES:
+            raise KnowledgeError(f"unsupported writing style: {writing_style}")
+    style_notes = optional_text(entry, "style_notes", max_length=320)
+    if writing_style == "custom" and not style_notes:
+        raise KnowledgeError("custom writing style requires style_notes")
+
     split_from = optional_text(entry, "split_from", max_length=80)
     split_reason = optional_text(entry, "split_reason", max_length=320)
     if bool(split_from) != bool(split_reason):
@@ -545,6 +593,8 @@ def validate_document(entry: dict[str, Any]) -> dict[str, Any]:
         "title": require_text(entry, "title", max_length=80),
         "type": document_type,
         "status": status,
+        "writing_style": writing_style,
+        "style_notes": style_notes,
         "summary": require_text(entry, "summary", max_length=240),
         "audience": require_string_list(
             entry, "audience", max_items=6, max_item_length=80
@@ -583,7 +633,7 @@ def validate_document(entry: dict[str, Any]) -> dict[str, Any]:
         raise KnowledgeError("stable documents must not contain unresolved placeholders")
     for key in ("title", "summary", "scope"):
         validate_math_markdown(normalized[key], key)
-    for key in ("split_reason",):
+    for key in ("split_reason", "style_notes"):
         if normalized[key]:
             validate_math_markdown(normalized[key], key)
     for key in ("audience", "sources"):
@@ -635,6 +685,7 @@ def render_document(entry: dict[str, Any], created_at: str | None = None) -> str
         "title": entry["title"],
         "type": entry["type"],
         "status": entry["status"],
+        "writing_style": entry["writing_style"],
         "summary": entry["summary"],
         "audience": entry["audience"],
         "scope": entry["scope"],
@@ -645,6 +696,8 @@ def render_document(entry: dict[str, Any], created_at: str | None = None) -> str
     if entry["split_from"]:
         metadata["split_from"] = entry["split_from"]
         metadata["split_reason"] = entry["split_reason"]
+    if entry["style_notes"]:
+        metadata["style_notes"] = entry["style_notes"]
     metadata_json = json.dumps(metadata, ensure_ascii=False, separators=(",", ":"))
     return (
         f"<!-- codex-document:{entry['id']} -->\n"

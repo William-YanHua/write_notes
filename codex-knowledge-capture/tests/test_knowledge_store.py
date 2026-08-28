@@ -133,6 +133,60 @@ class DocumentReuseTest(unittest.TestCase):
                 )
             )
 
+    def test_document_style_defaults_from_document_type(self) -> None:
+        value = knowledge_store.validate_document(self.document("project-guide"))
+
+        self.assertEqual(value["writing_style"], "explanatory")
+        self.assertIsNone(value["style_notes"])
+
+    def test_explicit_document_style_is_saved_in_metadata(self) -> None:
+        self.write_document(
+            self.document(
+                "project-guide",
+                writing_style="technical",
+                style_notes="面向数据开发，说明处理规则并提供输入输出示例。",
+            )
+        )
+
+        metadata = knowledge_store.extract_document_metadata(
+            (self.knowledge_dir / "documents" / "project-guide.md").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertIsNotNone(metadata)
+        self.assertEqual(metadata["writing_style"], "technical")
+        self.assertEqual(
+            metadata["style_notes"],
+            "面向数据开发，说明处理规则并提供输入输出示例。",
+        )
+
+    def test_custom_style_requires_notes(self) -> None:
+        with self.assertRaisesRegex(
+            knowledge_store.KnowledgeError, "custom writing style requires style_notes"
+        ):
+            knowledge_store.validate_document(
+                self.document("project-guide", writing_style="custom")
+            )
+
+    def test_document_rejects_review_traces_and_generic_headings(self) -> None:
+        paragraph = (
+            "数据清洗按字段类型分别执行标准化、缺失值处理和异常值识别。"
+            "每项规则都说明输入条件、转换过程和输出结果，便于开发者理解和实现。"
+        ) * 5
+        for fragment in (
+            "## 影响与验收\n\n" + paragraph,
+            "## 字段处理\n\n根据用户建议修改这一部分。" + paragraph,
+        ):
+            body = (
+                f"## 数据来源\n\n{paragraph}\n\n"
+                f"## 清洗方法\n\n{paragraph}\n\n{fragment}"
+            )
+            with self.subTest(fragment=fragment[:30]):
+                with self.assertRaises(knowledge_store.KnowledgeError):
+                    knowledge_store.validate_document(
+                        self.document("project-guide", body=body)
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()
